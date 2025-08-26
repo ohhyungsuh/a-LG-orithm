@@ -1,100 +1,79 @@
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.LinkedList;
-import java.util.Queue;
-import java.util.StringTokenizer;
+import java.io.*;
+import java.util.*;
 
 public class Main {
-
-    private static int M;
-    private static int N;
-    private static int H;
-
-    private static final int[] dx = {-1, 0, 1, 0, 0, 0};
-    private static final int[] dy = {0, -1, 0, 1, 0, 0};
-    private static final int[] dz = {0, 0, 0, 0, 1, -1};
+    static int M, N, H;
+    static int[][][] tomatoes;
+    static int[] dx = {-1, 1, 0, 0, 0, 0};
+    static int[] dy = {0, 0, -1, 1, 0, 0};
+    static int[] dz = {0, 0, 0, 0, -1, 1};
 
     public static void main(String[] args) throws IOException {
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-
         StringTokenizer st = new StringTokenizer(br.readLine());
+
         M = Integer.parseInt(st.nextToken());
         N = Integer.parseInt(st.nextToken());
         H = Integer.parseInt(st.nextToken());
 
+        tomatoes = new int[H][N][M];
         Queue<int[]> q = new LinkedList<>();
-        int ripenTomato = 0;
-        int notRipenTomato = 0;
+        int notRipenCount = 0;
 
-        int[][][] tomatoes = new int[H][N][M];
-        for(int z = 0; z < H; z++) {
-            for(int y = 0; y < N; y++) {
+        // 입력 처리
+        for (int h = 0; h < H; h++) {
+            for (int n = 0; n < N; n++) {
                 st = new StringTokenizer(br.readLine());
-                for(int x = 0; x < M; x++) {
-                    int tomato = Integer.parseInt(st.nextToken());
+                for (int m = 0; m < M; m++) {
+                    int t = Integer.parseInt(st.nextToken());
+                    tomatoes[h][n][m] = t;
 
-                    if(tomato == 0) {
-                        notRipenTomato++;
-                    } else if(tomato == 1) {
-                        ripenTomato++;
-                        q.add(new int[]{z, y, x, 0});
+                    if (t == 1) {
+                        q.add(new int[]{m, n, h, 0}); // 익은 토마토만 큐에 추가
+                    } else if (t == 0) {
+                        notRipenCount++; // 안 익은 토마토 개수 카운트
                     }
-
-                    tomatoes[z][y][x] = tomato;
                 }
             }
         }
 
-        if (notRipenTomato == 0) {
+        // 예외 처리: 처음부터 다 익어 있음
+        if (notRipenCount == 0) {
             System.out.println(0);
-        } else if(ripenTomato == 0) {
-            System.out.println(-1);
-        } else {
-            int takeDays = bfs(tomatoes, q, notRipenTomato);
-            if(takeDays == -1) {
-                System.out.println(-1);
-            } else {
-                System.out.println(takeDays);
-            }
+            return;
         }
+
+        // BFS 실행
+        int result = bfs(q, notRipenCount);
+        System.out.println(result);
     }
 
-    private static int bfs(int[][][] tomatoes, Queue<int[]> q, int notRipenTomato) {
-        int days = 0;
-        int ripenTomato = 0;
+    static int bfs(Queue<int[]> q, int notRipenCount) {
+        int maxDay = 0;
 
-        while(!q.isEmpty()) {
-            int[] info = q.poll();
+        while (!q.isEmpty()) {
+            int[] cur = q.poll();
+            int x = cur[0], y = cur[1], z = cur[2], day = cur[3];
+            maxDay = Math.max(maxDay, day);
 
-            int z = info[0];
-            int y = info[1];
-            int x = info[2];
-            int day = info[3];
-
-            for(int i = 0; i < 6; i++) {
-                int nz = z + dz[i];
-                int ny = y + dy[i];
+            for (int i = 0; i < 6; i++) {
                 int nx = x + dx[i];
-                int newDay = day + 1;
+                int ny = y + dy[i];
+                int nz = z + dz[i];
 
-                if(isInside(nz, ny, nx) && tomatoes[nz][ny][nx] == 0) {
-                    tomatoes[nz][ny][nx] = 1;
-                    ripenTomato++;
-                    days = newDay;
-                    q.add(new int[]{nz, ny, nx, newDay});
+                // 배열 범위 체크 + 안 익은 토마토만 처리
+                if (0 <= nx && nx < M && 0 <= ny && ny < N && 0 <= nz && nz < H && tomatoes[nz][ny][nx] == 0) {
+                    tomatoes[nz][ny][nx] = 1; // 익었다고 표시
+                    notRipenCount--;          // 남은 안 익은 토마토 감소
+                    q.add(new int[]{nx, ny, nz, day + 1});
+
+                    // 최적화: 모두 익으면 바로 종료
+                    if (notRipenCount == 0) return day + 1;
                 }
             }
         }
 
-        if(ripenTomato != notRipenTomato) {
-            return -1;
-        }
-
-        return days;
-    }
-
-    private static boolean isInside(int z, int y, int x) {
-        return 0 <= z && z < H && 0 <= y && y < N && 0 <= x && x < M;
+        // 안 익은 토마토가 남아 있으면 -1
+        return -1;
     }
 }
